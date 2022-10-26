@@ -104,9 +104,9 @@ class Log extends SysLog implements ILogger, IDataLogger {
 		];
 
 		if (
-			$server->getUserSession()->isLoggedIn() &&
-			$server->getUserSession()->getUser()->getBackendClassName() == "user_saml" &&
-			$secret = $server->query('OCA\User_SAML\UserBackend')->getCurrentUserSecret()
+			\OC::$server->getUserSession()->isLoggedIn() &&
+			\OC::$server->getUserSession()->getUser()->getBackendClassName() == "user_saml" &&
+			$secret = \OC::$server->query('OCA\User_SAML\UserBackend')->getCurrentUserSecret()
 		) {
 				array_push($sensitive, $secret);
 		}
