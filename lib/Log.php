@@ -64,6 +64,8 @@ class Log extends SysLog implements ILogger, IDataLogger {
 	/** @var IRegistry */
 	private $crashReporters;
 
+	private $sensitive = array();
+
 	/**
 	 * @param IWriter $logger The logger that should be used
 	 * @param SystemConfig $config the system config object
@@ -86,6 +88,21 @@ class Log extends SysLog implements ILogger, IDataLogger {
 			$this->normalizer = $normalizer;
 		}
 		$this->crashReporters = $registry;
+
+		$this->sensitive = [
+			\OC::$server->getConfig()->getSystemValue('secret'),
+			\OC::$server->getConfig()->getSystemValue('passwordsalt'),
+			\OC::$server->getConfig()->getSystemValue('dbpassword'),
+		];
+
+		if (
+			\OC::$server->getUserSession()->isLoggedIn() &&
+			\OC::$server->getUserSession()->getUser()->getBackendClassName() == "user_saml" &&
+			$secret = \OC::$server->query('OCA\User_SAML\UserBackend')->getCurrentUserSecret()
+		) {
+				array_push($this->sensitive, $secret);
+		}
+
 	}
 
 	/**
@@ -97,22 +114,13 @@ class Log extends SysLog implements ILogger, IDataLogger {
 		$serializer = new ExceptionSerializer($this->config);
 		$placeholder = $serializer::SENSITIVE_VALUE_PLACEHOLDER;
 
-		$sentitive = [
-			\OC::$server->getConfig()->getSystemValue('secret'),
-			\OC::$server->getConfig()->getSystemValue('passwordsalt'),
-			\OC::$server->getConfig()->getSystemValue('dbpassword'),
-		];
-
-		if (
-			\OC::$server->getUserSession()->isLoggedIn() &&
-			\OC::$server->getUserSession()->getUser()->getBackendClassName() == "user_saml" &&
-			$secret = \OC::$server->query('OCA\User_SAML\UserBackend')->getCurrentUserSecret()
-		) {
-				array_push($sensitive, $secret);
-		}
-
-		foreach ($sentitive as $val) {
-			$entry = str_replace($val, $placeholder, $entry);
+		foreach ($this->sensitive as $val) {
+			if (is_array($entry)) {
+				$entry['Message'] = str_replace($val, $placeholder, $entry['Message']);
+			}
+			else {
+				$entry = str_replace($val, $placeholder, $entry);
+			}
 		}
 
 		$this->logger->write($app, $entry, $level);
