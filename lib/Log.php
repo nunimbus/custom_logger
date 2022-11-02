@@ -102,7 +102,6 @@ class Log extends SysLog implements ILogger, IDataLogger {
 		) {
 				array_push($this->sensitive, $secret);
 		}
-
 	}
 
 	/**

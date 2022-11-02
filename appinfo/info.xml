@@ -4,7 +4,7 @@
 	<id>custom_logger</id>
 	<name>Custom Logger</name>
 	<summary>Register a custom log class in Nextcloud</summary>
-	<description>Register a custom log class in Nextcloud</description>
+	<description>Register a custom log class in Nextcloud in order to strip out user-defined sensitive data before writing to the log.</description>
 	<version>1.0.0</version>
 	<licence>agpl</licence>
 	<author>Andrew Summers</author>
@@ -15,6 +15,6 @@
 	</types>
 	<category>tools</category>
 	<dependencies>
-		<nextcloud min-version="20" max-version="25" />
+		<nextcloud min-version="24" max-version="25" />
 	</dependencies>
 </info>
