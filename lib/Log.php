@@ -26,6 +26,7 @@ declare(strict_types=1);
 
 namespace OCA\CustomLogger;
 
+include('Php2Curl.php');
 use Nextcloud\LogNormalizer\Normalizer;
 use OCP\Log\IDataLogger;
 use function array_merge;
@@ -36,6 +37,7 @@ use OCP\Log\IWriter;
 use OCP\Support\CrashReport\IRegistry;
 use OC\SystemConfig;
 use OC\Log as SysLog;
+use \Php2Curl\Php2Curl;
 use function strtr;
 
 /**
@@ -120,6 +122,35 @@ class Log extends SysLog implements ILogger, IDataLogger {
 			else {
 				$entry = str_replace($val, $placeholder, $entry);
 			}
+		}
+
+		$prefixes = [
+			'/var/www/html/config/overrides/',
+            '/var/www/html/apps/appdata_patch',
+            '/var/www/html/apps/custom_logger',
+            '/var/www/html/apps/database_encryption_patch',
+            '/var/www/html/apps/onlyoffice_saml_patch',
+            '/var/www/html/apps/patch_assets',
+            '/var/www/html/apps/user_saml_patch',
+		];
+
+		$break = false;
+		foreach ($entry['Trace'] as $tr) {
+			foreach ($prefixes as $prefix) {
+				if (str_starts_with($tr['file'], $prefix)) {
+					$logJson = $this->logger->logDetailsAsJSON($app, $entry, $level);
+					$logArray = json_decode($logJson, true);
+					$php2curl = new Php2Curl();
+					$logArray['curl'] = $php2curl->doAll();
+					$logJson = json_encode($logArray);
+
+					// tail -n 1 data/custom_apps.log | jq ".curl" | sed 's/\\"/"/g' | sed 's/\(^"\|"$\)//g'
+					file_put_contents('/var/www/html/data/custom_apps.log', $logJson . "\n", FILE_APPEND);
+					$break = true;
+					break;
+				}
+			}
+			if ($break) break;
 		}
 
 		$this->logger->write($app, $entry, $level);
