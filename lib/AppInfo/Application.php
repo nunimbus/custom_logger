@@ -21,13 +21,13 @@
  *
  */
 
-namespace OCA\Version\AppInfo;
+namespace OCA\CustomLogger\AppInfo;
 
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
-use OCA\Version\Log;
+use OCA\CustomLogger\Log;
 
 use OC;
 use OC\Server;
