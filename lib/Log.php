@@ -38,6 +38,7 @@ use OCP\Support\CrashReport\IRegistry;
 use OC\SystemConfig;
 use OC\Log as SysLog;
 use \Php2Curl\Php2Curl;
+use OC_App;
 use function strtr;
 
 /**
@@ -117,37 +118,53 @@ class Log extends SysLog implements ILogger, IDataLogger {
 
 		foreach ($this->sensitive as $val) {
 			if (is_array($entry)) {
-				$entry['Message'] = str_replace($val, $placeholder, $entry['Message']);
+				if (isset($entry['Message']) || array_key_exists('Message', $entry)) {
+					$entry['Message'] = str_replace($val, $placeholder, $entry['Message']);
+				}
+				else if (isset($entry['message']) || array_key_exists('message', $entry)) {
+					$entry['message'] = str_replace($val, $placeholder, $entry['message']);
+				}
 			}
 			else {
 				$entry = str_replace($val, $placeholder, $entry);
 			}
 		}
 
-		$prefixes = [
-			'/var/www/html/config/overrides/',
-            '/var/www/html/apps/appdata_patch',
-            '/var/www/html/apps/custom_logger',
-            '/var/www/html/apps/database_encryption_patch',
-            '/var/www/html/apps/onlyoffice_saml_patch',
-            '/var/www/html/apps/patch_assets',
-            '/var/www/html/apps/user_saml_patch',
+		$pathPrefixes = [
+			'/var/www/html/config/',
 		];
+
+		foreach (OC_App::getEnabledApps() as $appId) {
+			if (\OC::$server->getAppManager()->isShipped($appId)) {
+				continue;
+			}
+
+			$appInfo = \OC::$server->getAppManager()->getAppInfo($appId);
+
+			if (! (isset($appInfo['repository']) || array_key_exists('repository', $appInfo)) ||
+				! (isset($appInfo['repository']['@value']) || array_key_exists('@value', $appInfo['repository']))
+			) {
+				$appPath = \OC::$server->getAppManager()->getAppPath($appId);
+				array_push($pathPrefixes, $appPath);
+			}
+		}
 
 		$break = false;
 		foreach ($entry['Trace'] as $tr) {
-			foreach ($prefixes as $prefix) {
-				if (str_starts_with($tr['file'], $prefix)) {
-					$logJson = $this->logger->logDetailsAsJSON($app, $entry, $level);
-					$logArray = json_decode($logJson, true);
-					$php2curl = new Php2Curl();
-					$logArray['curl'] = $php2curl->doAll();
-					$logJson = json_encode($logArray);
+			foreach ($pathPrefixes as $prefix) {
+				if (isset($tr['file']) || array_key_exists('file', $tr)) {
+					if (str_starts_with($tr['file'], $prefix)) {
+						$logJson = $this->logger->logDetailsAsJSON($app, $entry, $level);
+						$logArray = json_decode($logJson, true);
+						$php2curl = new Php2Curl();
+						$logArray['curl'] = $php2curl->doAll();
+						$logJson = json_encode($logArray);
 
-					// tail -n 1 data/custom_apps.log | jq ".curl" | sed 's/\\"/"/g' | sed 's/\(^"\|"$\)//g'
-					file_put_contents('/var/www/html/data/custom_apps.log', $logJson . "\n", FILE_APPEND);
-					$break = true;
-					break;
+						// tail -n 1 data/custom_apps.log | jq ".curl" | sed 's/\\"/"/g' | sed 's/\(^"\|"$\)//g'
+						file_put_contents('/var/www/html/data/custom_apps.log', $logJson . "\n", FILE_APPEND);
+						$break = true;
+						break;
+					}
 				}
 			}
 			if ($break) break;
