@@ -51,6 +51,8 @@ class Application extends App implements IBootstrap {
 
 			return new Log($logger, $c->get(SystemConfig::class), null, $registry);
 		});
+
+		OC::$server->get('OC\Log\ErrorHandler')->setLogger(OC::$server->getLogger());
 	}
 
 	public function register(IRegistrationContext $context): void {
