@@ -150,24 +150,27 @@ class Log extends SysLog implements ILogger, IDataLogger {
 		}
 
 		$break = false;
-		foreach ($entry['Trace'] as $tr) {
-			foreach ($pathPrefixes as $prefix) {
-				if (isset($tr['file']) || array_key_exists('file', $tr)) {
-					if (str_starts_with($tr['file'], $prefix)) {
-						$logJson = $this->logger->logDetailsAsJSON($app, $entry, $level);
-						$logArray = json_decode($logJson, true);
-						$php2curl = new Php2Curl();
-						$logArray['curl'] = $php2curl->doAll();
-						$logJson = json_encode($logArray);
 
-						// tail -n 1 data/custom_apps.log | jq ".curl" | sed 's/\\"/"/g' | sed 's/\(^"\|"$\)//g'
-						file_put_contents('/var/www/html/data/custom_apps.log', $logJson . "\n", FILE_APPEND);
-						$break = true;
-						break;
+		if (isset($entry['Trace']) || array_key_exists('Trace', $entry)) {
+			foreach ($entry['Trace'] as $tr) {
+				foreach ($pathPrefixes as $prefix) {
+					if (isset($tr['file']) || array_key_exists('file', $tr)) {
+						if (str_starts_with($tr['file'], $prefix)) {
+							$logJson = $this->logger->logDetailsAsJSON($app, $entry, $level);
+							$logArray = json_decode($logJson, true);
+							$php2curl = new Php2Curl();
+							$logArray['curl'] = $php2curl->doAll();
+							$logJson = json_encode($logArray);
+
+							// tail -n 1 data/custom_apps.log | jq ".curl" | sed 's/\\"/"/g' | sed 's/\(^"\|"$\)//g'
+							file_put_contents('/var/www/html/data/custom_apps.log', $logJson . "\n", FILE_APPEND);
+							$break = true;
+							break;
+						}
 					}
 				}
+				if ($break) break;
 			}
-			if ($break) break;
 		}
 
 		$this->logger->write($app, $entry, $level);
