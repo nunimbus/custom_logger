@@ -150,9 +150,23 @@ class Log extends SysLog implements ILogger, IDataLogger {
 		}
 
 		$break = false;
+		$silence = false;
 
 		if (isset($entry['Trace']) || array_key_exists('Trace', $entry)) {
 			foreach ($entry['Trace'] as $tr) {
+				if (
+					(isset($tr['file']) || array_key_exists('file', $tr)) &&
+					(isset($tr['line']) || array_key_exists('line', $tr))
+				) {
+					$line = file($tr['file'])[$tr['line'] - 1];
+
+					if (str_contains($line, '@')) {
+						$silence = true;
+						break;
+					}
+				}
+
+				// If this is a custom-written app, create a cURL dump of the current request and log it to `custom_apps.log`
 				foreach ($pathPrefixes as $prefix) {
 					if (isset($tr['file']) || array_key_exists('file', $tr)) {
 						if (str_starts_with($tr['file'], $prefix)) {
@@ -173,6 +187,8 @@ class Log extends SysLog implements ILogger, IDataLogger {
 			}
 		}
 
-		$this->logger->write($app, $entry, $level);
+		if (! $silence || OC::$server->getConfig()->getSystemValue('loglevel', 2) <= 1) {
+			$this->logger->write($app, $entry, $level);
+		}
 	}
 }
